@@ -1,0 +1,6 @@
+streamlit==1.45.1
+langchain==0.3.25
+langchain-groq==0.2.1
+langchain-core>=0.3.58
+python-dotenv==1.1.0
+requests==2.32.3
