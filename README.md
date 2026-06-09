@@ -230,24 +230,7 @@ Son kullanıcı aramalarını yerel `user_memory.json` dosyasında tutar. Bu dos
 
 Streamlit arayüzüdür. Şehir, tarih, tercih ve persona seçimini alır; planı, hava özetini, skorları ve değerlendirme sonucunu gösterir.
 
-## GitHub'a Yükleme Notları
-
-Bu projede GitHub'a gönderilmemesi gereken dosyalar:
-
-- `.env`
-- `venv/`
-- `__pycache__/`
-- `.DS_Store`
-- `user_memory.json`
-
-Gönderilmesi gereken güvenli örnek dosyalar:
-
-- `.env.example`
-- `user_memory.example.json`
-
-Eğer daha önce `.env` veya API anahtarı içeren dosyalar commit edildiyse, GitHub'a yüklemeden önce ilgili API anahtarlarını yenileyin. Gizli anahtar bir kez git geçmişine girdiyse, dosyayı sonradan silmek tek başına yeterli güvenlik sağlamaz.
-
-## Bilinen Sınırlamalar
+## Sınırlamalar
 
 - OpenWeatherMap ücretsiz 5 günlük tahmin API'si kullanıldığı için tarih aralığı en fazla yakın gelecek ile sınırlıdır.
 - Şehir adlarının API tarafından tanınacak biçimde girilmesi gerekir.
@@ -263,6 +246,3 @@ Eğer daha önce `.env` veya API anahtarı içeren dosyalar commit edildiyse, Gi
 - Dockerfile ve deployment pipeline
 - Test kapsamının artırılması
 
-## Lisans
-
-MIT License
