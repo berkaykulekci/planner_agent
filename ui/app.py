@@ -15,6 +15,8 @@ import json
 from agent.planner import run_planner_agent, format_react_steps
 from agent.memory import save_search, get_recent_searches
 from evaluation.evaluator import evaluate_itinerary
+from agent.postcard import generate_postcard
+from agent.lingo import generate_local_lingo
 
 
 # ─────────────────────────── Sayfa Konfigürasyonu ───────────────────────────
@@ -29,6 +31,7 @@ st.set_page_config(
 # ─────────────────────────── Custom CSS ───────────────────────────
 
 st.markdown("""
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
 <style>
     /* Ana tema */
     .stApp {
@@ -127,6 +130,142 @@ st.markdown("""
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
+    }
+
+    /* Kartpostal Tasarımı */
+    .postcard-container {
+        background: #fdfaf2;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        padding: 1.5rem;
+        border: 8px double #d3b88a;
+        margin-bottom: 1.5rem;
+        color: #2c2519;
+    }
+
+    .postcard-title {
+        font-family: 'Playfair Display', serif;
+        font-style: italic;
+        font-size: 1.8rem;
+        color: #6e473b;
+        text-align: center;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e8dfc7;
+        padding-bottom: 0.5rem;
+    }
+
+    .postcard-back {
+        display: flex;
+        gap: 1.5rem;
+        min-height: 250px;
+    }
+
+    .postcard-message-column {
+        flex: 1.3;
+        font-family: 'Caveat', cursive;
+        font-size: 1.45rem;
+        line-height: 1.4;
+        color: #3d3124;
+        padding-right: 1rem;
+        border-right: 2px dashed #e8dfc7;
+        white-space: pre-line;
+    }
+
+    .postcard-address-column {
+        flex: 0.7;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding-left: 0.5rem;
+        position: relative;
+    }
+
+    .postcard-stamp {
+        align-self: flex-end;
+        width: 70px;
+        height: 85px;
+        border: 2px dashed #a08060;
+        background: #f4ecd8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        border-radius: 4px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .postcard-address-lines {
+        margin-top: auto;
+    }
+
+    .postcard-address-line {
+        border-bottom: 1px solid #a08060;
+        height: 35px;
+        font-family: 'Caveat', cursive;
+        font-size: 1.25rem;
+        color: #5d4a36;
+        display: flex;
+        align-items: flex-end;
+        padding-left: 5px;
+    }
+
+    /* Lingo Kartları Tasarımı */
+    .lingo-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .lingo-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.2rem;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .lingo-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(79, 172, 254, 0.4);
+        box-shadow: 0 10px 20px rgba(79, 172, 254, 0.1);
+    }
+
+    .lingo-phrase {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: #4facfe;
+        margin-bottom: 0.5rem;
+    }
+
+    .lingo-pronunciation {
+        font-size: 0.9rem;
+        color: #f093fb;
+        margin-bottom: 0.8rem;
+        font-style: italic;
+    }
+
+    .lingo-meaning {
+        font-size: 1rem;
+        color: #ffffff;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding-top: 0.5rem;
+    }
+
+    .lingo-context {
+        font-size: 0.8rem;
+        color: #a0a0b0;
+        line-height: 1.3;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -255,7 +394,18 @@ if run_button:
                 preference=preference,
                 persona=persona,
             )
-            status.update(label="✅ Plan oluşturuldu!", state="complete")
+            st.write("✉️ Seyahat kartpostalı hazırlanıyor...")
+            result["postcard"] = generate_postcard(
+                city=city,
+                itinerary=result["output"],
+                persona=persona
+            )
+            st.write("💡 Yerel dil rehberi hazırlanıyor...")
+            result["lingo"] = generate_local_lingo(
+                city=city,
+                persona=persona
+            )
+            status.update(label="✅ Plan, Kartpostal ve Dil Rehberi oluşturuldu!", state="complete")
         except Exception as e:
             status.update(label="❌ Hata oluştu", state="error")
             st.error(f"Agent hatası: {str(e)}")
@@ -370,6 +520,78 @@ if run_button:
         f'<div class="metric-card">{result["output"]}</div>',
         unsafe_allow_html=True,
     )
+
+    # ─── Adım 5.5: Yapay Zeka Kartpostalı ───
+    if "postcard" in result:
+        st.markdown("### ✉️ Gelecekten Gelen Seyahat Kartpostalınız")
+        postcard = result["postcard"]
+        
+        # Kartpostal arka yüz tasarımı için ikon ve adres belirleme
+        stamp_emoji = {
+            "gourmet": "🥐",
+            "history": "🏛️",
+            "budget": "🎒",
+            "standard": "✈️"
+        }.get(persona, "✈️")
+        
+        persona_address = {
+            "gourmet": "Lezzet Kaşifleri Kulübü",
+            "history": "Zaman Yolcuları Derneği",
+            "budget": "Sırt Çantalı Gezginler Ocağı",
+            "standard": "Meraklı Kaşifler Cemiyeti"
+        }.get(persona, "Meraklı Kaşifler Cemiyeti")
+
+        postcard_html = (
+            f'<div class="postcard-container">'
+            f'<div class="postcard-title">Greetings from {city}!</div>'
+            f'<div class="postcard-back">'
+            f'<div class="postcard-message-column">{postcard["postcard_message"]}</div>'
+            f'<div class="postcard-address-column">'
+            f'<div class="postcard-stamp">{stamp_emoji}</div>'
+            f'<div class="postcard-address-lines">'
+            f'<div class="postcard-address-line">Kime: {persona_address}</div>'
+            f'<div class="postcard-address-line">Adres: Bulutların Üstü, Gezegen Dünya</div>'
+            f'<div class="postcard-address-line">Posta Kodu: 00000</div>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+            f'</div>'
+        )
+        
+        col_front, col_back = st.columns([1, 1.1])
+        with col_front:
+            st.image(
+                postcard["image_url"], 
+                use_container_width=True, 
+                caption=f"🖼️ Yapay Zeka Tasarımı {city} Görseli (Pollinations.ai)"
+            )
+        with col_back:
+            st.markdown(postcard_html, unsafe_allow_html=True)
+
+    # ─── Adım 5.6: Yerel Kültür & Dil Asistanı ───
+    if "lingo" in result:
+        lingo_data = result["lingo"]
+        st.markdown(f"### 💡 Yerel Dil Asistanı ({lingo_data.get('language', 'Yerel Dil')})")
+        
+        cards_html = ""
+        for item in lingo_data.get("phrases", []):
+            cards_html += (
+                f'<div class="lingo-card">'
+                f'<div>'
+                f'<div class="lingo-phrase">{item["phrase"]}</div>'
+                f'<div class="lingo-pronunciation">🗣️ {item["pronunciation"]}</div>'
+                f'</div>'
+                f'<div>'
+                f'<div class="lingo-meaning">🇹🇷 {item["meaning"]}</div>'
+                f'<div class="lingo-context">💡 {item["context"]}</div>'
+                f'</div>'
+                f'</div>'
+            )
+        
+        st.markdown(
+            f'<div class="lingo-container">{cards_html}</div>',
+            unsafe_allow_html=True
+        )
 
     # ─── Adım 6: Evaluation Agent ───
     st.markdown("---")
