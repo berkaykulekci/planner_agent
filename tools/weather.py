@@ -16,6 +16,7 @@ load_dotenv(override=True)
 
 OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY", "")
 BASE_URL = "https://api.openweathermap.org/data/2.5/forecast"
+GEO_URL = "https://api.openweathermap.org/geo/1.0/direct"
 
 
 def _fetch_forecast(city: str) -> dict:
@@ -26,12 +27,38 @@ def _fetch_forecast(city: str) -> dict:
             ".env dosyasına ekleyin."
         )
 
-    params = {
+    # Önce Geocoding API ile şehrin en doğru koordinatlarını (lat, lon) alıyoruz
+    geo_params = {
         "q": city,
+        "limit": 1,
         "appid": OPENWEATHERMAP_API_KEY,
-        "units": "metric",  # Celsius
-        "lang": "en",
     }
+    try:
+        geo_response = requests.get(GEO_URL, params=geo_params, timeout=10)
+        geo_response.raise_for_status()
+        geo_data = geo_response.json()
+    except Exception:
+        geo_data = []
+
+    # Eğer koordinat bulunabildiyse koordinat bazlı, bulunamadıysa q parametresi ile arama yapıyoruz
+    if geo_data:
+        lat = geo_data[0]["lat"]
+        lon = geo_data[0]["lon"]
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "appid": OPENWEATHERMAP_API_KEY,
+            "units": "metric",
+            "lang": "en",
+        }
+    else:
+        params = {
+            "q": city,
+            "appid": OPENWEATHERMAP_API_KEY,
+            "units": "metric",
+            "lang": "en",
+        }
+
     response = requests.get(BASE_URL, params=params, timeout=15)
     response.raise_for_status()
     return response.json()
@@ -72,7 +99,7 @@ def _aggregate_daily(forecast_data: dict, start_date: str, end_date: str) -> lis
 
         result.append({
             "date": date_str,
-            "temp_avg": round(max(temps), 1),
+            "temp_avg": round(sum(temps) / len(temps), 1),
             "temp_min": round(min(temps), 1),
             "temp_max": round(max(temps), 1),
             "rain_total_mm": round(rain_total, 1),

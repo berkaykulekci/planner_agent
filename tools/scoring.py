@@ -13,6 +13,7 @@ def _score_day(
     wind_speed_kmh: float,
     cloud_cover: float = 50.0,
     humidity: float = 50.0,
+    condition: str = "",
 ) -> dict:
     """
     Tek bir gün için hava durumu skoru hesaplar.
@@ -76,22 +77,39 @@ def _score_day(
     total = round(temp_score + rain_score + wind_score + cloud_score + humidity_score, 1)
     total = min(10.0, max(0.0, total))
 
-    # Kategori belirleme
-    if total >= 8:
-        category = "Mükemmel ☀️"
-        recommendation = "outdoor"
-    elif total >= 6:
-        category = "İyi 🌤️"
-        recommendation = "outdoor"
-    elif total >= 4:
-        category = "Orta 🌥️"
+    # Yağış/Fırtına/Kar durumlarına göre skor sınırlamaları ve kategorilendirme
+    is_rainy = rain_mm > 0.1 or condition in ["Rain", "Drizzle", "Thunderstorm"]
+    is_snowy = condition == "Snow"
+
+    if condition == "Thunderstorm" or rain_mm > 5.0:
+        category = "Fırtınalı/Aşırı Yağışlı ⛈️"
+        recommendation = "indoor"
+        total = min(3.0, total)  # Skor sınırla
+    elif is_rainy:
+        category = "Yağmurlu 🌧️"
+        recommendation = "indoor" if rain_mm > 2.0 else "mixed"
+        total = min(5.5, total)  # Skor sınırla
+    elif is_snowy:
+        category = "Karlı 🌨️"
         recommendation = "mixed"
-    elif total >= 2:
-        category = "Kötü 🌧️"
-        recommendation = "indoor"
+        total = min(5.0, total)  # Skor sınırla
     else:
-        category = "Çok Kötü ⛈️"
-        recommendation = "indoor"
+        # Standart skor bazlı kategoriler (Yağışsız günler için)
+        if total >= 8:
+            category = "Mükemmel ☀️"
+            recommendation = "outdoor"
+        elif total >= 6:
+            category = "İyi 🌤️"
+            recommendation = "outdoor"
+        elif total >= 4:
+            category = "Orta 🌥️"
+            recommendation = "mixed"
+        elif total >= 2:
+            category = "Kötü 🌫️"
+            recommendation = "indoor"
+        else:
+            category = "Çok Kötü 🥶"
+            recommendation = "indoor"
 
     return {
         "score": total,
@@ -110,12 +128,13 @@ def _score_day(
 from tools.weather import LAST_WEATHER_DATA
 
 @tool
-def score_days() -> str:
+def score_days(city: str = "") -> str:
     """
     En son çekilen hava durumu verisini (get_weather'dan) bellekte okuyup her gün için 0-10 arası
     açık hava uygunluk skoru hesaplar ve en iyi günlerden kötüye doğru sıralar.
     
-    Bu aracı çağırırken HİÇBİR parametre girmemelisin. Sadece fonksiyonu çalıştır.
+    Args:
+        city: İsteğe bağlı şehir adı.
 
     Returns:
         JSON formatında her gün için skor, kategori ve öneriler.
@@ -137,6 +156,7 @@ def score_days() -> str:
                 wind_speed_kmh=day.get("wind_speed_avg_kmh", 0),
                 cloud_cover=day.get("cloud_cover_avg", 50),
                 humidity=day.get("humidity_avg", 50),
+                condition=day.get("condition", ""),
             )
             scored_days.append({
                 "date": day.get("date", "unknown"),
